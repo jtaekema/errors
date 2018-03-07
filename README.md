@@ -2,6 +2,8 @@
 
 A simple way to add tracing information to an error.
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/jtaekema/errors)](https://goreportcard.com/report/github.com/jtaekema/errors) [![Build Status](https://travis-ci.org/jtaekema/errors.svg?branch=master)](https://travis-ci.org/jtaekema/errors) [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://github.com/jtaekema/errors/blob/master/LICENSE)
+
 ## How to use
 
 To add tracing to an error, you would do something like:
