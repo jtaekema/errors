@@ -9,9 +9,16 @@ import (
 
 // Error interface.
 type Error interface {
+	// Cause returns the underlying error.
 	Cause() error
+
+	// Error returns the error message of the underlying error.
 	Error() string
+
+	// Trace returns a list of trace information attached to this error.
 	Trace() []string
+
+	// Details returns a formatted trace string.
 	Details() string
 }
 
