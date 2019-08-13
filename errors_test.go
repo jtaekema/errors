@@ -166,21 +166,25 @@ func TestTracefNilError(t *testing.T) {
 	}
 }
 
-func TestCauseStandardError(t *testing.T) {
-	standard := fmt.Errorf("standard")
-	err := Cause(standard)
-	if err == nil {
+func TestCauseWithoutWrappedError(t *testing.T) {
+	original := fmt.Errorf("original")
+	cause := Cause(original)
+	if cause == nil {
 		t.Error("Cause must return a non-nil error")
 	}
-	if err != standard {
-		t.Error("Cause must return the underlying error")
+	if cause != original {
+		t.Error("Cause must return the standard error if not wrapped")
 	}
-	wrapped := Trace(standard)
-	err = Cause(wrapped)
-	if err == nil {
+}
+
+func TestCauseWithWrappedError(t *testing.T) {
+	original := fmt.Errorf("original")
+	wrapped := Trace(original)
+	cause := Cause(wrapped)
+	if cause == nil {
 		t.Error("Cause must return a non-nil error")
 	}
-	if err != standard {
+	if cause != original {
 		t.Error("Cause must return the underlying error")
 	}
 }

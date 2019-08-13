@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+// IncludeCaller if true will include filename tracing to the error logs. This
+// is useful for debugging the program that is creating the error, while leaving
+// this off is better for users of the program.
+var IncludeCaller bool
+
 // Error interface.
 type Error interface {
 	// Cause returns the underlying error.
@@ -27,7 +32,9 @@ func New(text string) error {
 	err := &wrappedError{
 		traceMessage: text,
 	}
-	err.addCaller(1)
+	if IncludeCaller {
+		err.addCaller(1)
+	}
 	return err
 }
 
@@ -36,33 +43,40 @@ func Newf(format string, args ...interface{}) error {
 	err := &wrappedError{
 		traceMessage: fmt.Sprintf(format, args...),
 	}
-	err.addCaller(1)
+	if IncludeCaller {
+		err.addCaller(1)
+	}
 	return err
 }
 
-// Trace attaches a location to the error, unless the error is nil.
-func Trace(other error) error {
-	if other == nil {
+// Trace returns a wrapped error that may include caller information, unless the
+// previous error is nil.
+func Trace(previous error) error {
+	if previous == nil {
 		return nil
 	}
 	err := &wrappedError{
-		previous: other,
+		previous: previous,
 	}
-	err.addCaller(1)
+	if IncludeCaller {
+		err.addCaller(1)
+	}
 	return err
 }
 
-// Tracef attaches a location and a message to the error, unless the error is
-// nil.
-func Tracef(other error, format string, args ...interface{}) error {
-	if other == nil {
+// Tracef returns a wrapped error that may include caller information, unless
+// the previous error is nil.
+func Tracef(previous error, format string, args ...interface{}) error {
+	if previous == nil {
 		return nil
 	}
 	err := &wrappedError{
 		traceMessage: fmt.Sprintf(format, args...),
-		previous:     other,
+		previous:     previous,
 	}
-	err.addCaller(1)
+	if IncludeCaller {
+		err.addCaller(1)
+	}
 	return err
 }
 
@@ -87,9 +101,9 @@ func GetTrace(err error) []string {
 			// add the trace info to this line
 			file, line := e.getCaller()
 			if file != "" {
-				buf.WriteString(fmt.Sprintf("%s:%d", file, line))
+				buf.WriteString(fmt.Sprintf("%s:%d ", file, line))
 			}
-			buf.WriteString(" [error] ")
+			buf.WriteString("[error] ")
 			buf.WriteString(e.traceMessage)
 			err = e.previous
 		} else {
@@ -162,5 +176,5 @@ func (e *wrappedError) getCaller() (filename string, line int) {
 	return e.traceFile, e.traceLine
 }
 
-// enforce wrappedError follows the interface
+// ensure wrappedError follows the interface
 var _ Error = Error(&wrappedError{})
