@@ -2,7 +2,7 @@
 
 A simple way to add tracing information to an error.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/jtaekema/errors)](https://goreportcard.com/report/github.com/jtaekema/errors) [![Build Status](https://travis-ci.org/jtaekema/errors.svg?branch=master)](https://travis-ci.org/jtaekema/errors) [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://github.com/jtaekema/errors/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/jtaekema/errors)](https://goreportcard.com/report/github.com/jtaekema/errors) [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://github.com/jtaekema/errors/blob/master/LICENSE)
 
 ## How to use
 
@@ -49,8 +49,8 @@ The context is displayed after the file/line number and can be very useful for d
 
 The error details would look like:
 
-    /Users/jtaekema/go/src/github.com/jtaekema/errors/app/app.go:10 [error] this is an error
-    /Users/jtaekema/go/src/github.com/jtaekema/errors/app/app.go:17 [error] internal didn't work when '1 != 5'
+    /app/app.go:10 [error] this is an error
+    /app/app.go:17 [error] internal didn't work when '1 != 5'
 
 ## Best Practices
 
