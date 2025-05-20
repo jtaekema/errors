@@ -1,7 +1,10 @@
+// Package errors extends standard errors with caller information as well as the
+// ability to explicitly wrap errors.
 package errors
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -12,25 +15,10 @@ import (
 // this off is better for users of the program.
 var IncludeCaller bool
 
-// Error interface.
-type Error interface {
-	// Cause returns the underlying error.
-	Cause() error
-
-	// Error returns the error message of the underlying error.
-	Error() string
-
-	// Trace returns a list of trace information attached to this error.
-	Trace() []string
-
-	// Details returns a formatted trace string.
-	Details() string
-}
-
-// New creates a new raw error and trace it.
+// New creates a new error and adds trace information to it.
 func New(text string) error {
 	err := &wrappedError{
-		traceMessage: text,
+		message: text,
 	}
 	if IncludeCaller {
 		err.addCaller(1)
@@ -38,10 +26,10 @@ func New(text string) error {
 	return err
 }
 
-// Newf creates a new raw error and trace it.
-func Newf(format string, args ...interface{}) error {
+// Newf creates a new error and adds trace information to it.
+func Newf(format string, args ...any) error {
 	err := &wrappedError{
-		traceMessage: fmt.Sprintf(format, args...),
+		message: fmt.Sprintf(format, args...),
 	}
 	if IncludeCaller {
 		err.addCaller(1)
@@ -49,47 +37,21 @@ func Newf(format string, args ...interface{}) error {
 	return err
 }
 
-// Trace returns a wrapped error that may include caller information, unless the
-// previous error is nil.
-func Trace(previous error) error {
-	if previous == nil {
-		return nil
-	}
-	err := &wrappedError{
-		previous: previous,
-	}
-	if IncludeCaller {
-		err.addCaller(1)
-	}
-	return err
-}
-
-// Tracef returns a wrapped error that may include caller information, unless
-// the previous error is nil.
-func Tracef(previous error, format string, args ...interface{}) error {
-	if previous == nil {
-		return nil
-	}
-	err := &wrappedError{
-		traceMessage: fmt.Sprintf(format, args...),
-		previous:     previous,
-	}
-	if IncludeCaller {
-		err.addCaller(1)
-	}
-	return err
-}
-
-// Cause returns the underlying raw error.
+// Cause returns the underlying original error.
 func Cause(err error) error {
-	if err, ok := err.(*wrappedError); ok {
-		return err.Cause()
+	for {
+		e, ok := err.(*wrappedError)
+		if ok && e.err != nil {
+			err = e.err
+		} else {
+			break
+		}
 	}
 	return err
 }
 
-// GetTrace returns a list of trace information attached to this error.
-func GetTrace(err error) []string {
+// Trace returns a list of trace information attached to this error.
+func Trace(err error) []string {
 	if err == nil {
 		return []string{}
 	}
@@ -104,8 +66,8 @@ func GetTrace(err error) []string {
 				buf.WriteString(fmt.Sprintf("%s:%d ", file, line))
 			}
 			buf.WriteString("[error] ")
-			buf.WriteString(e.traceMessage)
-			err = e.previous
+			buf.WriteString(e.message)
+			err = e.err
 		} else {
 			// just the error message
 			buf.WriteString(err.Error())
@@ -114,7 +76,8 @@ func GetTrace(err error) []string {
 		lines = append(lines, buf.String())
 	}
 
-	// reverse the list
+	// reverse the list so that the first error in the slice is the original
+	// underlying error.
 	var result []string
 	for i := len(lines); i > 0; i-- {
 		result = append(result, lines[i-1])
@@ -122,59 +85,103 @@ func GetTrace(err error) []string {
 	return result
 }
 
-// Details returns a formatted trace string.
+// Details returns a formatted trace string suitable for printing an error trace.
 func Details(err error) string {
-	return strings.Join(GetTrace(err), "\n")
+	return strings.Join(Trace(err), "\n")
+}
+
+// Is reports whether any error in err's tree matches target.
+//
+// For more information see: https://pkg.go.dev/errors#Is
+func Is(err, target error) bool {
+	// Use Is from the errors package.
+	return errors.Is(err, target)
+}
+
+// As finds the first error in err's tree that matches target, and if one is found, sets
+// target to that error value and returns true. Otherwise, it returns false.
+//
+// For more information see: https://pkg.go.dev/errors#As
+func As(err error, target any) bool {
+	// Use As from the errors package.
+	return errors.As(err, target)
+}
+
+// Wrap returns a wrapped error that may include caller information, unless the
+// provided error is nil.
+func Wrap(err error, text string) error {
+	if err == nil {
+		return nil
+	}
+
+	new := &wrappedError{
+		message: text,
+		err:     err,
+	}
+	if IncludeCaller {
+		new.addCaller(1)
+	}
+
+	return new
+}
+
+// Wrapf returns a wrapped error that may include caller information, unless the
+// provided error is nil.
+func Wrapf(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+
+	new := &wrappedError{
+		message: fmt.Sprintf(format, args...),
+		err:     err,
+	}
+	if IncludeCaller {
+		new.addCaller(1)
+	}
+
+	return new
+}
+
+func Unwrap(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if e, ok := err.(*wrappedError); ok && e.err != nil {
+		return e.err
+	}
+
+	return err
 }
 
 type wrappedError struct {
-	traceFile    string
-	traceLine    int
-	traceMessage string
+	file    string
+	line    int
+	message string
 
-	previous error
-}
-
-// Cause returns the underlying error.
-func (e *wrappedError) Cause() error {
-	if e.previous == nil {
-		return e
-	}
-	switch err := e.previous.(type) {
-	case *wrappedError:
-		return err.Cause()
-	default:
-		return err
-	}
+	err error
 }
 
 // Error returns the error message of the underlying error.
 func (e *wrappedError) Error() string {
-	if e.previous == nil {
-		return e.traceMessage
+	if e.err == nil {
+		return e.message
 	}
-	return e.Cause().Error()
+
+	return Unwrap(e).Error()
 }
 
-// Trace returns a list of trace information attached to this error.
-func (e *wrappedError) Trace() []string {
-	return GetTrace(e)
-}
-
-// Details returns a formatted trace string.
-func (e *wrappedError) Details() string {
-	return Details(e)
+func (e *wrappedError) Unwrap() error {
+	return Unwrap(e)
 }
 
 func (e *wrappedError) addCaller(callDepth int) {
 	_, file, line, _ := runtime.Caller(callDepth + 1)
-	e.traceFile = file
-	e.traceLine = line
+	e.file = file
+	e.line = line
 }
 
-func (e *wrappedError) getCaller() (filename string, line int) {
-	return e.traceFile, e.traceLine
+func (e *wrappedError) getCaller() (file string, line int) {
+	return e.file, e.line
 }
-
-// ensure wrappedError follows the interface
-var _ Error = Error(&wrappedError{})

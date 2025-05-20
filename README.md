@@ -1,18 +1,28 @@
 # Errors
 
-A simple way to add tracing information to an error.
+A simple way to add tracing information and context to an error.
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/jtaekema/errors)](https://goreportcard.com/report/github.com/jtaekema/errors) [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://github.com/jtaekema/errors/blob/master/LICENSE)
 
 ## How to use
 
-To add tracing to an error, you would do something like:
+This is intended to be a drop in replacement for the `errors` package included in the standard library with additional functionality.
 
-    return errors.Trace(err)
+To create a new error with tracing information:
 
-To add a trace with some context use, do this:
+    errors.New("something bad happened")
 
-    return errors.Tracef(err, "trying to perform action...")
+or for your convience
+
+    errors.New("action: %v failed to complete successfully", action)
+
+To add tracing and context to an error, you would do something like:
+
+    return errors.Wrap(err, "trying to perform some action...")
+
+or
+
+    return errors.Wrapf(err, "trying to perfom: %v", action)
 
 The context is displayed after the file/line number and can be very useful for debugging by just glancing at the error trace.
 
@@ -23,7 +33,7 @@ The context is displayed after the file/line number and can be very useful for d
     import (
       "fmt"
 
-      "github.com/jtaekema/errors"
+      "github.com/jtaekema/errors/v2"
     )
 
     func internal() error {
@@ -34,7 +44,7 @@ The context is displayed after the file/line number and can be very useful for d
       if 1 != 5 {
         err := internal()
         if err != nil {
-          return errors.Tracef(err, "internal didn't work when '1 != 5'")
+          return errors.Wrap(err, "internal didn't work when '1 != 5'")
         }
       }
       return nil
@@ -47,14 +57,11 @@ The context is displayed after the file/line number and can be very useful for d
       }
     }
 
-The error details would look like:
+The printed error details would look like:
 
-    /app/app.go:10 [error] this is an error
-    /app/app.go:17 [error] internal didn't work when '1 != 5'
+    /app/main.go:10 [error] this is an error
+    /app/main.go:17 [error] internal didn't work when '1 != 5'
 
 ## Best Practices
 
-This is somewhat up to you, but I think there are two philosophies.
-
-1. Always add a trace when you return an error.
-2. Only add a trace when you can add context.
+This is somewhat up to the reader, but I believe it is best to always add context when you return an error.
